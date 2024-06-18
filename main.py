@@ -65,15 +65,17 @@ class GameState():
                 self.end_of_road = True 
                 x_interval = self.road_length - 1 
 
-            if self.switched_up_over_pothole(bike, x_interval) or \
-               self.switched_down_over_pothole(bike, x_interval) or \
-               self.jumped_on_pothole(bike, x_interval) or \
-               self.drove_over_pothole(bike, x_interval):
-                self.bike_died(bike)
+            if (self.switched_up_over_pothole(bike, x_interval) or \
+                self.switched_down_over_pothole(bike, x_interval) or \
+                self.jumped_on_pothole(bike, x_interval) or \
+                self.drove_over_pothole(bike, x_interval)): 
+                
+                bike['A'] = False
+                self.num_alive -= 1
 
         self.reset_state_variables()
         self.update_game_progress()
-            # Boolean expressions to check if the bike state after turn
+
 
     def switched_up_over_pothole(self, bike, x_interval):
         # previous lane is bike['Y'] + 1
@@ -115,10 +117,6 @@ class GameState():
                 return True
         
         return False
-    
-    def bike_died(self, bike):
-        bike['A'] = False
-        self.num_alive -= 1
 
 def find_valid_sequence(game):
     # Optimization - Limit actions based on logical constraints to manage exponential blow up
