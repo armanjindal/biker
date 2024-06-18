@@ -57,30 +57,50 @@ class GameState():
     
     def move_and_check_alive(self):
         for bike in self.bike_data.values():
-            # Skip dead bikes
-            if not bike['A']:
+            if not bike['A']:  # Skip dead bikes
                 continue
 
             x_interval = self.x + self.speed
             if x_interval >= self.road_length: 
                 self.end_of_road = True 
                 x_interval = self.road_length - 1 
-    
-            # Boolean expressions to check if the bike state after turn
 
-            switched_up_over_pothole = self.is_changing_up and (('0' in self.road[bike['Y'] + 1][self.x:x_interval]) or ('0' in self.road[bike['Y']][self.x:x_interval+ 1]))
-            switched_down_over_pothole = self.is_changing_down and (('0' in self.road[bike['Y'] - 1][self.x:x_interval]) or ('0' in self.road[bike['Y']][self.x:x_interval + 1]))
-            jumped_on_pothole = self.is_jumping and self.road[bike['Y']][x_interval] == '0'
-            drove_over_pothole = ('0' in self.road[bike['Y']][self.x:(x_interval) + 1]) and not self.is_jumping
-
-            if switched_up_over_pothole or switched_down_over_pothole or jumped_on_pothole or drove_over_pothole:
+            if self.switched_up_over_pothole(bike, x_interval) or \
+               self.switched_down_over_pothole(bike, x_interval) or \
+               self.jumped_on_pothole(bike, x_interval) or \
+               self.drove_over_pothole(bike, x_interval):
                 self.bike_died(bike)
 
-        # Reset the action sepecific state varables
+        self.reset_state_variables()
+        self.update_game_progress()
+            # Boolean expressions to check if the bike state after turn
+
+    def switched_up_over_pothole(self, bike, x_interval):
+        # previous lane is bike['Y'] + 1
+        return self.is_changing_up and (
+            '0' in self.road[bike['Y'] + 1][self.x:x_interval] or
+            '0' in self.road[bike['Y']][self.x:x_interval + 1]
+        )
+
+    def switched_down_over_pothole(self, bike, x_interval):
+        # previous lane is bike['Y'] - 1
+        return self.is_changing_down and (
+            '0' in self.road[bike['Y'] - 1][self.x:x_interval] or
+            '0' in self.road[bike['Y']][self.x:x_interval + 1]
+        )
+
+    def jumped_on_pothole(self, bike, x_interval):
+        return self.is_jumping and self.road[bike['Y']][x_interval] == '0'
+
+    def drove_over_pothole(self, bike, x_interval):
+        return '0' in self.road[bike['Y']][self.x:x_interval + 1] and not self.is_jumping
+
+    def reset_state_variables(self):
         self.is_changing_down = False 
         self.is_changing_up = False
         self.is_jumping = False 
-        # Update game state for next action
+
+    def update_game_progress(self):
         self.x += self.speed
         self.turn += 1
     
@@ -101,10 +121,8 @@ class GameState():
         self.num_alive -= 1
 
 def find_valid_sequence(game):
-    # Optimization
-    # 1: Prune State Space by limiting actions that will make a difference based on state
-    # 2: Ordering actions that move the bike ahead before actions that don't as much
-    # 3: Removing WAIT as it is functionally equivalent to JUMP
+    # Optimization - Limit actions based on logical constraints to manage exponential blow up
+    # Removing WAIT as it is functionally equivalent to JUMP
     def valid_actions(game_state, action_squence):
         
         actions = ["SPEED", "JUMP"]  
@@ -112,10 +130,6 @@ def find_valid_sequence(game):
         if game_state.speed > 2:
             actions.append("SLOW")
             #actions.append("WAIT")
-
-        # if game_state.num_alive < 4:
-        #     actions.append("DOWN")
-        #     actions.append("UP")
 
         if not game_state.is_bottom_lane_occupied():
             actions.append("DOWN")
@@ -138,7 +152,7 @@ def find_valid_sequence(game):
             for action in valid_actions(game, action_sequence):
                 updated_game = copy.deepcopy(game)
                 updated_game.update_state_on_action(action)                
-                # Python heap default to min heap, so we need to invert the sign of the number of alive bikes
+                # Python heap default to min heap, invert the sign to make it a max heap
                 heapq.heappush(priority_queue, (-updated_game.num_alive, action, updated_game))
             
             while priority_queue:
@@ -279,16 +293,9 @@ test_cases = {
 
 def main():
     for case_name, case_data in test_cases.items():
-        # game = GameState(**case_data)
-        # valid_sequence = find_valid_sequence(game)
-        # print(f'Test Case: {case_name}')
-        # print(f'Valid Sequence: {valid_sequence}')
-        # print('-----------------------------------')
-
-        # Test case 12 - TODO: Redesign algorithm/optimize for larger roads
-        game = GameState(**test_case_12)
+        game = GameState(**case_data)
         valid_sequence = find_valid_sequence(game)
-        print(f'Test Case: 12-worn-road')
+        print(f'Test Case: {case_name}')
         print(f'Valid Sequence: {valid_sequence}')
         print('-----------------------------------')
 
